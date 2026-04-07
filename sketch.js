@@ -8,6 +8,7 @@ let difficulty = 1;      // 1: Easy, 2: Medium, 3: Hard
 let failReason = "";     // 顯示失敗原因
 const margin = 100;      // 左右留出的空間
 const cursorRadius = 7.5; // 滑鼠圈圈半徑 (15/2)
+let waveTime = 0;        // 用於控制高級模式的扭動時間
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -24,6 +25,11 @@ function draw() {
     drawPath();
     drawMouseCursor(); // 繪製滑鼠跟隨圈
     
+    // 只有在遊戲正式開始後，波浪計時器才開始跑
+    if (gameActive) {
+      waveTime += 0.05;
+    }
+
     // 在頂部告知難度級別
     let diffLabels = ["", "簡單", "中級", "高級"];
     fill(255);
@@ -47,11 +53,11 @@ function getMidlineOffset(x) {
   if (difficulty === 1) return 0;
   if (difficulty === 2) {
     // 中級：波浪 (靜止的 Sine 波，增加曲折感但不會移動)
-    return sin(x * 0.03) * 15;
+    return sin(x * 0.03) * 10;
   }
   if (difficulty === 3) {
-    // 高級：扭動 (隨時間 frameCount 動態變化的波浪)
-    return sin(frameCount * 0.06 + x * 0.01) * 20;
+    // 高級：扭動 (使用 waveTime 控制，點擊起點後才開始變動)
+    return sin(waveTime + x * 0.01) * 12;
   }
   return 0;
 }
@@ -63,8 +69,8 @@ function generatePath() {
   let spacing = (width - 2 * margin) / (numPoints - 1);
   
   // 根據難度調整間距
-  let minGap = difficulty === 1 ? 60 : (difficulty === 2 ? 45 : 35);
-  let maxGap = difficulty === 1 ? 90 : (difficulty === 2 ? 65 : 45);
+  let minGap = difficulty === 1 ? 80 : (difficulty === 2 ? 65 : 55);
+  let maxGap = difficulty === 1 ? 120 : (difficulty === 2 ? 95 : 75);
   
   for (let i = 0; i < numPoints; i++) {
     let x = margin + i * spacing;
@@ -183,8 +189,8 @@ function checkGameLogic() {
       failGame("碰到了藍色邊界！");
     }
 
-    // 嚴格檢查是否偏離中線
-    if (abs(mouseY - currentMidY) > 12) {
+    // 將判定範圍設定為 25，在挑戰性與容錯率之間取得更好的平衡
+    if (abs(mouseY - currentMidY) > 25) {
       failGame("偏離了黃色引導線！");
     }
   }
@@ -233,6 +239,7 @@ function mousePressed() {
       if (failReason === "") difficulty = floor(random(1, 4));
       generatePath();
       gameActive = false;
+      waveTime = 0; // 重置波浪時間
       gameState = "PLAYING";
     }
   } else if (gameState === "PLAYING" && !gameActive) {
@@ -240,6 +247,7 @@ function mousePressed() {
     let startX = topPoints[0].x;
     let startY = (topPoints[0].y + bottomPoints[0].y) / 2 + getMidlineOffset(startX);
     if (dist(mouseX, mouseY, startX, startY) < 20) {
+      waveTime = 0; // 從點擊瞬間開始扭動
       gameActive = true;
     }
   } else if (gameState === "WON" || gameState === "LOST") {
